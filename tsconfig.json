@@ -9,5 +9,5 @@
     "outDir": "dist",
     "rootDir": "."
   },
-  "include": ["lib/**/*.ts", "drizzle.config.ts"]
+  "include": ["lib/**/*.ts", "mcp/**/*.ts", "drizzle.config.ts"]
 }

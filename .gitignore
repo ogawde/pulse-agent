@@ -29,4 +29,5 @@ pulse-agent/data/
 
 # Drizzle kit cache (migrations in drizzle/ are tracked)
 .drizzle/
-.cursor/
+
+README.md
