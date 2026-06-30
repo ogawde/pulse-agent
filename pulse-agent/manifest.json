@@ -1,0 +1,104 @@
+{
+  "display_information": {
+    "name": "Pulse",
+    "description": "Team health pulse checks for People Ops. Aggregate insights, not surveillance.",
+    "background_color": "#1a1a2e"
+  },
+  "features": {
+    "assistant_view": {
+      "assistant_description": "Pulse helps People Ops spot team-level stress early with aggregate wellbeing signals.",
+      "suggested_prompts": [
+        {
+          "title": "Team health",
+          "message": "How is Engineering doing this week?"
+        },
+        {
+          "title": "Open alerts",
+          "message": "What open alerts do we have?"
+        },
+        {
+          "title": "Workspace summary",
+          "message": "Give me an org health summary"
+        }
+      ]
+    },
+    "app_home": {
+      "home_tab_enabled": true,
+      "messages_tab_enabled": true,
+      "messages_tab_read_only_enabled": false
+    },
+    "bot_user": {
+      "display_name": "Pulse",
+      "always_online": true
+    },
+    "slash_commands": [
+      {
+        "command": "/pulse",
+        "url": "https://ngrok-free.app/slack/events",
+        "description": "Team health checks for People Ops",
+        "usage_hint": "health | help",
+        "should_escape": false
+      }
+    ]
+  },
+  "oauth_config": {
+    "redirect_urls": ["https://ngrok-free.app/slack/oauth_redirect"],
+    "scopes": {
+      "user": [
+        "search:read",
+        "channels:history",
+        "channels:read",
+        "groups:history",
+        "groups:read",
+        "im:history",
+        "mpim:history",
+        "users:read",
+        "search:read.public",
+        "search:read.private",
+        "search:read.mpim",
+        "search:read.im",
+        "search:read.files",
+        "search:read.users",
+        "chat:write",
+        "canvases:read",
+        "canvases:write",
+        "users:read.email"
+      ],
+      "bot": [
+        "app_mentions:read",
+        "channels:history",
+        "chat:write",
+        "commands",
+        "groups:history",
+        "im:history",
+        "im:read",
+        "im:write",
+        "reactions:write",
+        "reactions:read",
+        "users:read",
+        "assistant:write"
+      ]
+    }
+  },
+  "settings": {
+    "event_subscriptions": {
+      "request_url": "https://ngrok-free.app/slack/events",
+      "bot_events": [
+        "app_home_opened",
+        "app_mention",
+        "assistant_thread_started",
+        "message.channels",
+        "message.groups",
+        "message.im"
+      ]
+    },
+    "interactivity": {
+      "is_enabled": true,
+      "request_url": "https://ngrok-free.app/slack/events"
+    },
+    "is_mcp_enabled": true,
+    "org_deploy_enabled": true,
+    "socket_mode_enabled": true,
+    "token_rotation_enabled": false
+  }
+}

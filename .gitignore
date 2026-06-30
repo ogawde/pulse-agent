@@ -1,0 +1,32 @@
+slack-hackathon/
+
+.env
+.env.local
+.env.*.local
+pulse-agent/.env
+
+.*
+**/.*/
+!.gitignore
+!.env.example
+!pulse-agent/.env.sample
+
+# Dependencies
+node_modules/
+
+# Build / tooling output
+dist/
+.turbo/
+.vercel/
+
+# Logs and OS junk
+*.log
+logs/
+.DS_Store
+Thumbs.db
+
+pulse-agent/data/
+
+# Drizzle kit cache (migrations in drizzle/ are tracked)
+.drizzle/
+.cursor/
