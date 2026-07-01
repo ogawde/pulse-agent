@@ -52,11 +52,153 @@ export function buildPulseIntroBlocks() {
   ];
 }
 
+function formatSignalLabel(signal) {
+  return signal.replace(/_/g, ' ');
+}
+
 /**
- * Format a team health row for Block Kit.
- * @param {{ name: string, compositeScore: number, level: string }} team
- * @returns {string}
+ * Build Block Kit for a single team summary (PITCH primary flow).
+ * @param {import('../../lib/pulse-data.js').TeamSummary | object} summary
+ * @param {{ id: string, title: string, severity: string } | null} [teamAlert]
+ * @param {{ liveRefresh?: boolean, rtsMeta?: { messageCount: number, channelSlugs: string[] } }} [options]
+ * @returns {import('@slack/types').KnownBlock[]}
  */
+export function buildTeamSummaryBlocks(summary, teamAlert = null, options = {}) {
+  const emoji = LEVEL_EMOJI[summary.level] ?? ':white_circle:';
+  const driverLines =
+    summary.activeSignals?.length > 0
+      ? summary.activeSignals.map((s) => `• ${formatSignalLabel(s)}`).join('\n')
+      : '• No elevated signals right now';
+
+  /** @type {import('@slack/types').KnownBlock[]} */
+  const blocks = [
+    {
+      type: 'header',
+      text: {
+        type: 'plain_text',
+        text: `${summary.team} — ${summary.level.charAt(0).toUpperCase()}${summary.level.slice(1)}`,
+      },
+    },
+    {
+      type: 'section',
+      text: {
+        type: 'mrkdwn',
+        text: `${emoji} *Composite score:* ${summary.compositeScore.toFixed(1)} / 10\n` + `*Drivers:*\n${driverLines}`,
+      },
+    },
+  ];
+
+  if (teamAlert) {
+    blocks.push({
+      type: 'section',
+      text: {
+        type: 'mrkdwn',
+        text: `:warning: *Open alert:* ${teamAlert.title} (${teamAlert.severity})`,
+      },
+    });
+  }
+
+  /** @type {import('@slack/types').ActionsBlock['elements']} */
+  const actionElements = [
+    {
+      type: 'button',
+      action_id: 'pulse_suggest_checkin',
+      text: { type: 'plain_text', text: 'Suggest check-in' },
+      value: summary.team,
+    },
+  ];
+
+  if (teamAlert) {
+    actionElements.unshift({
+      type: 'button',
+      action_id: 'pulse_acknowledge_alert',
+      text: { type: 'plain_text', text: 'Acknowledge' },
+      style: 'primary',
+      value: teamAlert.id,
+    });
+  }
+
+  blocks.push({ type: 'actions', elements: actionElements });
+
+  const contextParts = ['Aggregate team-level insights via Pulse MCP. No individual rankings.'];
+  if (options.liveRefresh && options.rtsMeta) {
+    const channels = options.rtsMeta.channelSlugs.map((s) => `#${s}`).join(', ');
+    contextParts.push(
+      `Live RTS refresh from ${channels} (${options.rtsMeta.messageCount} messages analyzed, metadata only).`,
+    );
+  }
+
+  blocks.push({
+    type: 'context',
+    elements: [
+      {
+        type: 'mrkdwn',
+        text: contextParts.join(' '),
+      },
+    ],
+  });
+
+  return blocks;
+}
+
+/**
+ * Build Block Kit for open alerts list.
+ * @param {Array<{ id: string, team: string, title: string, summary: string, severity: string, signalDrivers: string[] }>} alerts
+ * @returns {import('@slack/types').KnownBlock[]}
+ */
+export function buildOpenAlertsBlocks(alerts) {
+  if (alerts.length === 0) {
+    return [
+      {
+        type: 'section',
+        text: {
+          type: 'mrkdwn',
+          text: ':white_check_mark: No open alerts right now. Teams look stable.',
+        },
+      },
+    ];
+  }
+
+  /** @type {import('@slack/types').KnownBlock[]} */
+  const blocks = [
+    {
+      type: 'header',
+      text: { type: 'plain_text', text: `Open Alerts (${alerts.length})` },
+    },
+  ];
+
+  for (const alert of alerts) {
+    const drivers = alert.signalDrivers?.map((d) => formatSignalLabel(d)).join(', ') || 'elevated signals';
+    blocks.push(
+      { type: 'divider' },
+      {
+        type: 'section',
+        text: {
+          type: 'mrkdwn',
+          text:
+            `*${alert.team}* — ${alert.title}\n` +
+            `${alert.summary}\n` +
+            `_Drivers:_ ${drivers} · _Severity:_ ${alert.severity}`,
+        },
+      },
+      {
+        type: 'actions',
+        elements: [
+          {
+            type: 'button',
+            action_id: 'pulse_acknowledge_alert',
+            text: { type: 'plain_text', text: 'Acknowledge' },
+            style: 'primary',
+            value: alert.id,
+          },
+        ],
+      },
+    );
+  }
+
+  return blocks;
+}
+
 function formatTeamRow(team) {
   const emoji = LEVEL_EMOJI[team.level] ?? ':white_circle:';
   return `${emoji} *${team.name}* — score ${team.compositeScore.toFixed(1)} (${team.level})`;

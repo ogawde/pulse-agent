@@ -36,7 +36,7 @@
         "command": "/pulse",
         "url": "https://ngrok-free.app/slack/events",
         "description": "Team health checks for People Ops",
-        "usage_hint": "health | help",
+        "usage_hint": "health | check-alerts | help",
         "should_escape": false
       }
     ]
@@ -67,6 +67,7 @@
       "bot": [
         "app_mentions:read",
         "channels:history",
+        "channels:read",
         "chat:write",
         "commands",
         "groups:history",
@@ -75,6 +76,7 @@
         "im:write",
         "reactions:write",
         "reactions:read",
+        "search:read.public",
         "users:read",
         "assistant:write"
       ]

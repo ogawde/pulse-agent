@@ -1,6 +1,7 @@
 import { AgentDeps, runAgent } from '../../agent/index.js';
 import { conversationStore } from '../../thread-context/index.js';
 import { postPulseIntro } from '../commands/pulse.js';
+import { getActionTokenFromEvent, tryHandlePulseQuery } from '../handlers/pulse-queries.js';
 import { buildFeedbackBlocks } from '../views/feedback-builder.js';
 
 /**
@@ -22,6 +23,19 @@ export async function handleAppMentioned({ client, context, event, logger, say, 
       await postPulseIntro(client, channelId, threadTs);
       return;
     }
+
+    const handled = await tryHandlePulseQuery({
+      text: cleanedText,
+      userId,
+      client,
+      channelId,
+      threadTs,
+      actionToken: getActionTokenFromEvent(event),
+      userToken: context.userToken,
+      say,
+      logger,
+    });
+    if (handled) return;
 
     // Set assistant thread status with loading messages
     await setStatus({

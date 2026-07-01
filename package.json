@@ -10,12 +10,16 @@
     "db:seed": "tsx lib/db/seed.ts",
     "db:studio": "drizzle-kit studio",
     "mcp:start": "tsx mcp/server.ts",
-    "mcp:test": "tsx mcp/test-tools.ts"
+    "mcp:test": "tsx mcp/test-tools.ts",
+    "scoring:demo": "tsx lib/scoring/run-demo.ts",
+    "worker:check": "tsx worker/check-alerts.ts",
+    "worker:start": "tsx worker/server.ts"
   },
   "dependencies": {
     "@modelcontextprotocol/node": "^2.0.0-alpha.3",
     "@modelcontextprotocol/server": "^2.0.0-alpha.3",
     "@neondatabase/serverless": "^1.0.1",
+    "@slack/web-api": "^7.16.0",
     "drizzle-orm": "^0.44.2",
     "zod": "^4.4.3"
   },

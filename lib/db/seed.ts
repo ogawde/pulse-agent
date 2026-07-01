@@ -2,7 +2,7 @@ import 'dotenv/config'
 import { desc, eq } from 'drizzle-orm'
 
 import { createDb } from './client.js'
-import { alerts, signalSnapshots, teams, workspaces } from './schema.js'
+import { signalSnapshots, teams, workspaces } from './schema.js'
 
 const DEMO_WORKSPACE = {
   slackTeamId: 'T_DEMO_PULSE',
@@ -85,24 +85,6 @@ async function seed() {
     await db.insert(signalSnapshots).values({
       teamId: row.id,
       ...team.snapshot,
-    })
-  }
-
-  const engineeringTeam = await db
-    .select()
-    .from(teams)
-    .where(eq(teams.name, 'Engineering'))
-    .limit(1)
-
-  if (engineeringTeam[0]) {
-    await db.insert(alerts).values({
-      teamId: engineeringTeam[0].id,
-      severity: 'medium',
-      status: 'open',
-      title: 'After-hours activity rising in Engineering',
-      summary:
-        'Engineering shows elevated after-hours messaging this week. Consider a wellbeing check-in.',
-      signalDrivers: ['after_hours', 'sentiment_drift'],
     })
   }
 

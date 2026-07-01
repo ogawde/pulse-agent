@@ -1,5 +1,6 @@
 import { AgentDeps, runAgent } from '../../agent/index.js';
 import { conversationStore } from '../../thread-context/index.js';
+import { getActionTokenFromEvent, tryHandlePulseQuery } from '../handlers/pulse-queries.js';
 import { buildFeedbackBlocks } from '../views/feedback-builder.js';
 
 /**
@@ -41,6 +42,19 @@ export async function handleMessage({ client, context, event, logger, say, saySt
     const text = event.text || '';
     const threadTs = event.thread_ts || event.ts;
     const userId = /** @type {string} */ (context.userId);
+
+    const handled = await tryHandlePulseQuery({
+      text,
+      userId,
+      client,
+      channelId,
+      threadTs,
+      actionToken: getActionTokenFromEvent(event),
+      userToken: context.userToken,
+      say,
+      logger,
+    });
+    if (handled) return;
 
     // Get conversation history
     const history = conversationStore.getHistory(channelId, threadTs);

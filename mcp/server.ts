@@ -11,6 +11,8 @@ import {
   acknowledgeAlert,
   getOpenAlerts,
   getTeamSummary,
+  insertTeamSnapshot,
+  type SnapshotInput,
 } from '../lib/db/queries.js'
 
 const rootDir = resolve(dirname(fileURLToPath(import.meta.url)), '..')
@@ -82,6 +84,40 @@ function createPulseMcpServer() {
     async ({ alert_id, actor_slack_id }) => {
       const result = await acknowledgeAlert(alert_id, actor_slack_id)
       return jsonResult(result)
+    },
+  )
+
+  server.registerTool(
+    'record_signal_snapshot',
+    {
+      title: 'Record signal snapshot',
+      description:
+        'Store computed team-level aggregate scores after an RTS pass. No message text — scores only.',
+      inputSchema: z.object({
+        team: z.string().describe('Team or department name'),
+        sentiment_drift: z.number(),
+        after_hours: z.number(),
+        channel_exclusion: z.number(),
+        response_drop: z.number(),
+        composite_score: z.number(),
+        level: z.enum(['normal', 'watch', 'warning', 'critical']),
+      }),
+    },
+    async (input) => {
+      const snapshot: SnapshotInput = {
+        sentimentDrift: input.sentiment_drift,
+        afterHours: input.after_hours,
+        channelExclusion: input.channel_exclusion,
+        responseDrop: input.response_drop,
+        compositeScore: input.composite_score,
+        level: input.level,
+      }
+      const teamId = await insertTeamSnapshot(input.team, snapshot)
+      if (!teamId) {
+        return jsonResult({ ok: false, team: input.team, message: 'Team not found' })
+      }
+      const summary = await getTeamSummary(input.team)
+      return jsonResult({ ok: true, teamId, summary })
     },
   )
 

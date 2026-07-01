@@ -1,20 +1,35 @@
-import { isAfterHours } from '@/lib/utils/time'
+import type { ActivityEvent } from '../rts/metadata.js'
+import { isAfterHours } from '../utils/time.js'
 
-export interface ScoringMessageEvent {
-  text: string
-  sentimentScore: number
-  timestamp: string
-  channel: string
-  senderId?: string
-  recipientIds?: string[]
+/** In-memory event for team aggregate scoring. No per-person surveillance. */
+export interface ScoringMessageEvent extends ActivityEvent {
+  text?: string
+  sentimentScore?: number
+}
+
+export type TeamSignalScores = {
+  sentimentDrift: number
+  afterHours: number
+  channelExclusion: number
+  responseDrop: number
+}
+
+export type TeamSignalContext = {
+  /** Configured team channels (from Neon teams.slack_channel_ids) */
+  baselineChannelIds?: string[]
 }
 
 function averageSentiment(events: ScoringMessageEvent[]): number {
-  if (events.length === 0) return 0
-  return events.reduce((sum, e) => sum + e.sentimentScore, 0) / events.length
+  const scored = events.filter((e) => e.sentimentScore !== undefined)
+  if (scored.length === 0) return 0
+  return scored.reduce((sum, e) => sum + (e.sentimentScore ?? 0), 0) / scored.length
 }
 
-function filterByDays(events: ScoringMessageEvent[], startDaysAgo: number, endDaysAgo: number) {
+function hasSentimentScores(events: ScoringMessageEvent[]): boolean {
+  return events.some((e) => e.sentimentScore !== undefined && e.sentimentScore !== 0)
+}
+
+function filterByDays(events: ActivityEvent[], startDaysAgo: number, endDaysAgo: number) {
   const now = Date.now()
   return events.filter((e) => {
     const age = now - new Date(e.timestamp).getTime()
@@ -25,12 +40,12 @@ function filterByDays(events: ScoringMessageEvent[], startDaysAgo: number, endDa
 }
 
 function detectEarlySentimentRisk(events: ScoringMessageEvent[]): number {
-  const negatives = events.filter((e) => e.sentimentScore < -0.3)
+  const negatives = events.filter((e) => (e.sentimentScore ?? 0) < -0.3)
   const negativeRatio = negatives.length / events.length
   const avg = averageSentiment(events)
   const avgNeg =
     negatives.length > 0
-      ? negatives.reduce((sum, e) => sum + e.sentimentScore, 0) / negatives.length
+      ? negatives.reduce((sum, e) => sum + (e.sentimentScore ?? 0), 0) / negatives.length
       : 0
 
   let fromAvg = 0
@@ -58,49 +73,64 @@ function detectEarlySentimentRisk(events: ScoringMessageEvent[]): number {
 
   return Math.min(
     10,
-    Math.round(Math.max(fromAvg, fromRatio, fromSeverity, fromVolume) * 10) / 10
+    Math.round(Math.max(fromAvg, fromRatio, fromSeverity, fromVolume) * 10) / 10,
   )
 }
 
-export function detectReceivedHostility(
-  events: Array<ScoringMessageEvent & { recipientIds?: string[] }>,
-  slackUserId: string
-): number {
-  const hostile = events.filter(
-    (e) =>
-      e.senderId !== slackUserId &&
-      (e.recipientIds ?? []).includes(slackUserId) &&
-      e.sentimentScore < -0.3
-  )
-
-  if (hostile.length === 0) return 0
-
-  const avgHostility =
-    hostile.reduce((sum, e) => sum + e.sentimentScore, 0) / hostile.length
-
-  let fromCount = 0
-  if (hostile.length >= 5) fromCount = 7.5
-  else if (hostile.length >= 3) fromCount = 6
-  else if (hostile.length >= 2) fromCount = 5
-  else fromCount = 4
-
-  let fromSeverity = 0
-  if (avgHostility < -0.65) fromSeverity = 8.5
-  else if (avgHostility < -0.5) fromSeverity = 7
-  else if (avgHostility < -0.4) fromSeverity = 5.5
-
-  return Math.min(10, Math.round(Math.max(fromCount, fromSeverity) * 10) / 10)
-}
-
-export function hasInsufficientHistory(events: ScoringMessageEvent[]): boolean {
+export function hasInsufficientHistory(events: ActivityEvent[]): boolean {
   return filterByDays(events, 7, 28).length === 0
 }
 
+/**
+ * Engagement stress proxy from metadata (volume + after-hours ratio shifts).
+ * Used when message text is not available — RTS metadata-only path.
+ */
+export function detectEngagementDrift(events: ActivityEvent[]): number {
+  const recent = filterByDays(events, 0, 7)
+  const previous = filterByDays(events, 7, 28)
+
+  if (recent.length === 0) return 0
+
+  if (previous.length === 0) {
+    const afterHoursRecent = recent.filter((e) => isAfterHours(e.timestamp)).length
+    const ratio = afterHoursRecent / recent.length
+    if (ratio >= 0.5) return 8
+    if (ratio >= 0.3) return 5
+    if (ratio >= 0.15) return 3
+    return 0
+  }
+
+  const recentPerDay = recent.length / 7
+  const previousPerDay = previous.length / 21
+  const volumeRatio = recentPerDay / Math.max(previousPerDay, 0.1)
+
+  const recentAfterHoursRatio =
+    recent.filter((e) => isAfterHours(e.timestamp)).length / recent.length
+  const previousAfterHoursRatio =
+    previous.filter((e) => isAfterHours(e.timestamp)).length / previous.length
+  const afterHoursIncrease = recentAfterHoursRatio - previousAfterHoursRatio
+
+  let score = 0
+  if (volumeRatio < 0.5) score = Math.max(score, 7)
+  else if (volumeRatio < 0.7) score = Math.max(score, 4)
+
+  if (afterHoursIncrease > 0.2) score = Math.max(score, 8)
+  else if (afterHoursIncrease > 0.1) score = Math.max(score, 5)
+  else if (afterHoursIncrease > 0.05) score = Math.max(score, 3)
+
+  return Math.min(10, score)
+}
+
+/** Team-level sentiment drift (recent week vs prior weeks). */
 export function detectSentimentDrift(events: ScoringMessageEvent[]): number {
   const recent = filterByDays(events, 0, 7)
   const previous = filterByDays(events, 7, 28)
 
   if (recent.length === 0) return 0
+
+  if (!hasSentimentScores(events)) {
+    return detectEngagementDrift(events)
+  }
 
   if (previous.length === 0) {
     return detectEarlySentimentRisk(recent)
@@ -115,10 +145,11 @@ export function detectSentimentDrift(events: ScoringMessageEvent[]): number {
   return 3 + ((drop - 0.25) / 0.25) * 5
 }
 
-export function detectAfterHours(events: ScoringMessageEvent[]): number {
+/** Team after-hours messaging volume (aggregate, not per-person). */
+export function detectAfterHours(events: ActivityEvent[]): number {
   const cutoff = Date.now() - 14 * 86400000
   const count = events.filter(
-    (e) => new Date(e.timestamp).getTime() >= cutoff && isAfterHours(e.timestamp)
+    (e) => new Date(e.timestamp).getTime() >= cutoff && isAfterHours(e.timestamp),
   ).length
 
   if (count === 0) return 0
@@ -128,9 +159,10 @@ export function detectAfterHours(events: ScoringMessageEvent[]): number {
   return 9
 }
 
+/** Channels the team stopped participating in vs baseline. */
 export function detectChannelExclusion(
   currentChannels: string[],
-  previousChannels: string[]
+  previousChannels: string[],
 ): number {
   const current = new Set(currentChannels)
   const lost = previousChannels.filter((c) => !current.has(c)).length
@@ -142,20 +174,48 @@ export function detectChannelExclusion(
   return 9
 }
 
-export function detectResponseDrop(recentReplyRate: number, baselineReplyRate: number): number {
-  if (baselineReplyRate <= 0) return 0
-  const ratio = recentReplyRate / baselineReplyRate
+/** Team message volume drop (proxy for participation / response patterns). */
+export function detectResponseDrop(recentVolume: number, baselineVolume: number): number {
+  if (baselineVolume <= 0) return 0
+  const ratio = recentVolume / baselineVolume
   if (ratio < 0.3) return 9
   if (ratio < 0.5) return 7
   return 0
 }
 
-export function activeSignalsFromScores(signals: {
-  sentimentDrift: number
-  afterHours: number
-  channelExclusion: number
-  responseDrop: number
-}): string[] {
+function detectTeamParticipationDrop(events: ActivityEvent[]): number {
+  const recent = filterByDays(events, 0, 7).length
+  const previous = filterByDays(events, 7, 14).length
+  return detectResponseDrop(recent, previous)
+}
+
+function activeChannelsInWindow(events: ActivityEvent[], startDays: number, endDays: number) {
+  return [...new Set(filterByDays(events, startDays, endDays).map((e) => e.channel))]
+}
+
+/**
+ * Compute all team-level signal scores from in-memory RTS events.
+ * No individual employee rankings.
+ */
+export function computeTeamSignals(
+  events: ScoringMessageEvent[],
+  context: TeamSignalContext = {},
+): TeamSignalScores {
+  const recentChannels = activeChannelsInWindow(events, 0, 7)
+  const baseline = context.baselineChannelIds ?? []
+
+  const channelExclusion =
+    baseline.length > 0 ? detectChannelExclusion(recentChannels, baseline) : 0
+
+  return {
+    sentimentDrift: detectSentimentDrift(events),
+    afterHours: detectAfterHours(events),
+    channelExclusion,
+    responseDrop: detectTeamParticipationDrop(events),
+  }
+}
+
+export function activeSignalsFromScores(signals: TeamSignalScores): string[] {
   const active: string[] = []
   if (signals.sentimentDrift >= 3) active.push('sentiment_drift')
   if (signals.afterHours >= 2) active.push('after_hours')

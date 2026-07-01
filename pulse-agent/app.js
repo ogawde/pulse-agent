@@ -10,6 +10,7 @@ config({ path: resolve(rootDir, 'pulse-agent', '.env') });
 import { App, LogLevel } from '@slack/bolt';
 
 import { registerListeners } from './listeners/index.js';
+import { startAlertScheduler } from './lib/alert-scheduler.js';
 
 const app = new App({
   token: process.env.SLACK_BOT_TOKEN,
@@ -24,4 +25,5 @@ registerListeners(app);
 (async () => {
   await app.start();
   app.logger.info('Pulse agent is running!');
+  startAlertScheduler(app);
 })();
