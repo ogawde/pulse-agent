@@ -18,7 +18,7 @@ import {
 const rootDir = resolve(dirname(fileURLToPath(import.meta.url)), '..')
 config({ path: resolve(rootDir, '.env') })
 
-const PORT = Number.parseInt(process.env.PULSE_MCP_PORT ?? '3100', 10)
+const PORT = Number.parseInt(process.env.PORT ?? process.env.PULSE_MCP_PORT ?? '3100', 10)
 const MCP_PATH = '/mcp'
 
 function jsonResult(data: unknown) {
@@ -128,6 +128,12 @@ const mcpServer = createPulseMcpServer()
 
 const httpServer = createServer(async (req, res) => {
   const url = new URL(req.url ?? '/', `http://localhost:${PORT}`)
+
+  if (req.method === 'GET' && url.pathname === '/health') {
+    res.writeHead(200, { 'Content-Type': 'application/json' })
+    res.end(JSON.stringify({ ok: true, service: 'pulse-mcp' }))
+    return
+  }
 
   if (url.pathname !== MCP_PATH) {
     res.writeHead(404, { 'Content-Type': 'application/json' })

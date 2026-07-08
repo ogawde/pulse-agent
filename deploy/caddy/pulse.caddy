@@ -1,0 +1,11 @@
+# Add to your Caddyfile — replace YOUR_DOMAIN with your real domain.
+# MCP and worker bind to localhost only; Caddy terminates TLS.
+
+pulse-mcp.YOUR_DOMAIN {
+	reverse_proxy localhost:3100
+}
+
+# Optional — only if pulse-worker.service is enabled
+pulse-worker.YOUR_DOMAIN {
+	reverse_proxy localhost:3200
+}

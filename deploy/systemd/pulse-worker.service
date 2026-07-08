@@ -1,0 +1,18 @@
+[Unit]
+Description=Pulse alert worker (HTTP cron endpoint)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=www-data
+Group=www-data
+WorkingDirectory=/opt/pulse
+EnvironmentFile=/opt/pulse/.env
+Environment=NODE_ENV=production
+ExecStart=/usr/bin/npm run worker:start
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
