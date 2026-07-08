@@ -1,11 +1,11 @@
-# Add to your Caddyfile — replace YOUR_DOMAIN with your real domain.
-# MCP and worker bind to localhost only; Caddy terminates TLS.
+# Pulse on curr.xyz — append to /etc/caddy/Caddyfile
+# MCP binds localhost:3100 only (same pattern as api.fornax / api.paynxt)
 
-pulse-mcp.YOUR_DOMAIN {
-	reverse_proxy localhost:3100
+api.pulse.curr.xyz {
+	reverse_proxy 127.0.0.1:3100
 }
 
 # Optional — only if pulse-worker.service is enabled
-pulse-worker.YOUR_DOMAIN {
-	reverse_proxy localhost:3200
-}
+# worker.pulse.curr.xyz {
+# 	reverse_proxy 127.0.0.1:3200
+# }
