@@ -9,6 +9,7 @@ pulse-agent/.env
 **/.*/
 !.gitignore
 !.env.example
+!deploy/.env.production.example
 !pulse-agent/.env.sample
 
 # Dependencies
