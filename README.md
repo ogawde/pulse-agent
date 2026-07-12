@@ -1,81 +1,124 @@
 # Pulse
 
-Team health pulse checks for People Ops. Slack-native HR wellbeing agent for the **Slack Agent for Good** hackathon track.
+**Team health pulse checks, not surveillance.**
 
-**Bot:** `@Pulse` | **Slash command:** `/pulse` | **Tagline:** Team health pulse checks, not surveillance.
+Slack-native HR wellbeing agent for the **Slack Agent for Good** hackathon.
 
-## Stack
 
-- Slack Agent (Bolt + OpenAI Agents SDK) in `pulse-agent/`
-- **Pulse MCP server** in `mcp/` (Neon-backed team health tools)
-- Neon PostgreSQL via Drizzle ORM in `lib/db/`
-- Scoring logic (reused from Ember) in `lib/scoring/`
-- RTS integration (Phase 4)
+|                   |                      |
+| ----------------- | -------------------- |
+| **Bot**           | `@Pulse`             |
+| **Slash command** | `/pulse`             |
+| **Sandbox**       | `pulse-sandbox1`     |
+| **Track**         | Slack Agent for Good |
 
-## Quick start
 
-### 1. Environment
+---
+
+## For judges (start here)
+
+**Workspace:** [pulse-sandbox1](https://pulse-sandbox1.enterprise.slack.com) — invites: `slackhack@salesforce.com`, `testing@devpost.com`
+
+Full script: `**[docs/JUDGE_TESTING_GUIDE.md](docs/JUDGE_TESTING_GUIDE.md)`**
+
+### 60-second test
+
+1. DM `**@Pulse**`: `How is Engineering doing this week?`
+2. Expect a **Block Kit card** — Engineering, Watch, score ~4.8, signal drivers.
+3. Open `**#people-ops`** → run `/pulse check-alerts` if no alerts visible.
+4. Click **Acknowledge** on an alert card → thread confirmation.
+
+### What Pulse does
+
+- **Team-level** wellbeing signals (not per-employee rankings)
+- **MCP** tools backed by **Neon PostgreSQL** (snapshots + alerts)
+- **Real-Time Search** for optional live refresh from `#engineering` / `#design` (metadata only)
+- **Proactive alerts** to `#people-ops` when teams cross thresholds
+
+### Demo channels (pulse-sandbox1)
+
+
+| Channel        | Purpose                         |
+| -------------- | ------------------------------- |
+| `#people-ops`  | Proactive HR alerts             |
+| `#engineering` | Engineering team / RTS opted-in |
+| `#design`      | Design team / RTS opted-in      |
+
+
+> **Note:** Team scores in the demo use **seeded snapshots** in Neon for reliability. RTS may update Engineering/Design when live channel data is returned. No Slack message text is stored in the database.
+
+### Architecture
+
+Pulse architecture: Slack Agent + MCP + RTS + Neon
+
+---
+
+## For developers
+
+### Stack
+
+- Slack Agent (Bolt + OpenAI Agents SDK) — `pulse-agent/`
+- Pulse MCP server — `mcp/`
+- Neon PostgreSQL + Drizzle — `lib/db/`
+- Team scoring — `lib/scoring/`
+- RTS + proactive worker — `lib/rts/`, `lib/worker/`
+
+### Local setup
 
 ```bash
 cp .env.example .env
-# Set DATABASE_URL (Neon pooled), OPENROUTER_API_KEY
-```
+# DATABASE_URL (Neon pooled), OPENROUTER_API_KEY
 
-### 2. Database
-
-```bash
 npm install
-npm run db:push      # apply schema to Neon
-npm run db:seed      # demo team snapshots (no raw messages)
-```
+npm run db:push
+npm run db:seed    # demo team snapshots only — no messages
 
-### 3. Run Pulse (two terminals)
-
-**Terminal 1** — MCP server (repo root):
-
-```bash
+# Terminal 1 (optional — LLM/MCP path)
 npm run mcp:start
+
+# Terminal 2
+cd pulse-agent && npm install && slack run
 ```
 
-**Terminal 2** — Slack agent:
+### MCP tools
+
+
+| Tool                                          | Use                             |
+| --------------------------------------------- | ------------------------------- |
+| `get_team_summary(team)`                      | Team health snapshot            |
+| `get_open_alerts()`                           | Open HR alerts                  |
+| `acknowledge_alert(alert_id, actor_slack_id)` | Acknowledge alert               |
+| `record_signal_snapshot`                      | Store aggregates after RTS pass |
+
+
+### Slash commands
+
+
+| Command               | Description                             |
+| --------------------- | --------------------------------------- |
+| `/pulse health`       | Workspace team summary                  |
+| `/pulse check-alerts` | Threshold check + post to `#people-ops` |
+| `/pulse help`         | Intro card                              |
+
+
+### Scripts
 
 ```bash
-cd pulse-agent
-npm install
-slack run
+npm run mcp:test          # verify Neon queries
+npm run scoring:demo      # offline metadata scoring
+npm run worker:check      # alert threshold check (DB)
+npm run worker:start      # cron HTTP server (port 3200)
 ```
 
-### 4. Sandbox setup
+### Privacy model
 
-1. Install `@Pulse` in your developer sandbox
-2. Create channels: `#people-ops`, `#engineering`, `#design`
-3. `/invite @Pulse` in each channel
-4. Try `/pulse health` or DM `@Pulse`: *How is Engineering doing?*
+- Aggregate team scores in `signal_snapshots` only
+- No `messages` or message text tables
+- RTS processes metadata in memory; optional small OpenRouter sample not persisted
+- No employee leaderboard
 
-## MCP tools
+---
 
-See [`mcp/README.md`](mcp/README.md) for tool details and architecture.
+## License
 
-| Tool | Use when |
-|------|----------|
-| `get_team_summary(team)` | "How is Engineering doing?" |
-| `get_open_alerts()` | "What alerts are open?" |
-| `acknowledge_alert(alert_id, actor_slack_id)` | HR acknowledges an alert |
-
-## Project layout
-
-```
-pulse-agent/          Slack Bolt agent (@Pulse, /pulse)
-mcp/                  Pulse MCP server (Streamable HTTP)
-lib/db/               Drizzle schema, queries, Neon client
-lib/scoring/          Team signal scoring (from Ember)
-drizzle/              SQL migrations
-```
-
-## Phase status
-
-- [x] Phase 1: Agent shell, `/pulse health`, Block Kit intro
-- [x] Phase 2: Neon schema + demo seed
-- [x] Phase 3: MCP server + agent wiring
-- [ ] Phase 4: Real-Time Search integration
-- [ ] Phase 5: Proactive `#people-ops` alerts
+MIT (see `pulse-agent/package.json`)

@@ -1,4 +1,5 @@
 import type React from 'react'
+import { Toaster, toast } from 'sonner'
 
 const Pill = ({ label }: { label: string }) => (
   <span className="hover-chip rounded-full border border-slate-700/70 bg-slate-900/60 px-3 py-1 text-xs text-slate-300">
@@ -6,9 +7,28 @@ const Pill = ({ label }: { label: string }) => (
   </span>
 )
 
+function showJudgeInviteToast() {
+  toast.message('Judges already invited', {
+    description:
+      'Hackathon judges (slackhack@salesforce.com and testing@devpost.com) have been invited to the pulse-sandbox1 Slack workspace.',
+    duration: 5000,
+  })
+}
+
 export const App: React.FC = () => {
   return (
     <div className="pulse-gradient flex min-h-full flex-col">
+      <Toaster
+        position="top-center"
+        theme="dark"
+        toastOptions={{
+          classNames: {
+            toast: 'border border-slate-700 bg-slate-900 text-slate-100 shadow-lg',
+            title: 'text-slate-50',
+            description: 'text-slate-300',
+          },
+        }}
+      />
       <header className="mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-6">
         <div className="flex items-center gap-3">
           <div className="grid h-8 w-8 grid-cols-2 grid-rows-2 gap-1 rounded-xl bg-slate-900/70 p-1 ring-1 ring-slate-700/60">
@@ -51,8 +71,8 @@ export const App: React.FC = () => {
           </div>
           <div className="flex flex-wrap gap-3 pt-2">
             <button
-              className="cursor-not-allowed rounded-xl bg-slate-500/50 px-4 py-2 text-sm font-semibold text-slate-200 opacity-70"
-              disabled
+              className="rounded-xl bg-[#2EB67D] px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-[#26a56f]"
+              onClick={showJudgeInviteToast}
               type="button"
             >
               Ask Invite
@@ -73,7 +93,7 @@ export const App: React.FC = () => {
                 </div>
                 <div className="text-xs text-slate-200">
                   <div className="font-medium">Pulse DM</div>
-                  <div className="text-[11px] text-slate-400">pulsesandbox</div>
+                  <div className="text-[11px] text-slate-400">pulse-sandbox1</div>
                 </div>
               </div>
               <span className="rounded-full bg-slate-900/80 px-2 py-1 text-[10px] uppercase tracking-[0.16em] text-emerald-300">
