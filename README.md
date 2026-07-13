@@ -19,11 +19,9 @@ Slack-native HR wellbeing agent for the **Slack Agent for Good** hackathon.
 
 **Workspace:** [pulse-sandbox1](https://pulse-sandbox1.enterprise.slack.com) — invites: `slackhack@salesforce.com`, `testing@devpost.com`
 
-Full script: `**[docs/JUDGE_TESTING_GUIDE.md](docs/JUDGE_TESTING_GUIDE.md)`**
-
 ### 60-second test
 
-1. DM `**@Pulse**`: `How is Engineering doing this week?`
+1. DM `**@Pulse`**: `How is Engineering doing this week?`
 2. Expect a **Block Kit card** — Engineering, Watch, score ~4.8, signal drivers.
 3. Open `**#people-ops`** → run `/pulse check-alerts` if no alerts visible.
 4. Click **Acknowledge** on an alert card → thread confirmation.
@@ -49,7 +47,7 @@ Full script: `**[docs/JUDGE_TESTING_GUIDE.md](docs/JUDGE_TESTING_GUIDE.md)`**
 
 ### Architecture
 
-Pulse architecture: Slack Agent + MCP + RTS + Neon
+![Pulse architecture: Slack Agent + MCP + RTS + Neon](./architecture.jpg)
 
 ---
 
@@ -67,7 +65,6 @@ Pulse architecture: Slack Agent + MCP + RTS + Neon
 
 ```bash
 cp .env.example .env
-# DATABASE_URL (Neon pooled), OPENROUTER_API_KEY
 
 npm install
 npm run db:push
@@ -104,9 +101,9 @@ cd pulse-agent && npm install && slack run
 ### Scripts
 
 ```bash
-npm run mcp:test          # verify Neon queries
+npm run mcp:test          
 npm run scoring:demo      # offline metadata scoring
-npm run worker:check      # alert threshold check (DB)
+npm run worker:check      # alert threshold check 
 npm run worker:start      # cron HTTP server (port 3200)
 ```
 
